@@ -127,6 +127,16 @@ test('empty combat and invalid durations fail without modifying the state', () =
   assert.throws(() => reduce(setup(), cast({ remaining: 0 }))); assert.equal(s.revision, 0);
 });
 
+test('an effect without a caster keeps its duration reference on edit and expires normally', () => {
+  let s = reduce(next(setup()), cast({ sourceId: '', remaining: 1, targetIds: ['pedro'] })).state;
+  s = reduce(s, { type: 'effect', value: { ...s.combat.effects[0], description: 'Editado' } }).state;
+  assert.equal(s.combat.effects[0].sourceId, '');
+  s = next(s);
+  assert.equal(s.combat.effects[0].remaining, 1);
+  s = next(next(next(s)));
+  assert.equal(s.combat.effects.length, 0);
+});
+
 test('removing a caster with another duration reference still permits editing the effect', () => {
   let s = reduce(next(setup()), cast({ anchorId: 'bruno' })).state;
   s = reduce(s, { type: 'remove', id: 'ana' }).state;

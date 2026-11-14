@@ -189,7 +189,7 @@ export function reduce(previous: State, command: Command, env: Environment = {},
       requireThat(string(v.id, 150) && v.id.length && string(v.name, 100) && v.name.trim().length && string(v.description, 5000) && string(v.message, 1200), 'Preencha nome e descrição com valores válidos.');
       requireThat(integer(v.remaining, 1) && v.remaining <= 999, 'A duração deve ser de 1 a 999 rodadas.');
       requireThat(c.participants[v.anchorId] && c.order.includes(v.anchorId), 'Escolha a referência da duração.');
-      requireThat(c.participants[v.sourceId], 'Escolha quem aplicou o efeito.');
+      requireThat(v.sourceId === '' || c.participants[v.sourceId], 'Escolha quem aplicou o efeito ou Nenhum.');
       requireThat(['none','start','end'].includes(v.trigger) && ['gold','fire','blue','green','violet'].includes(v.tone), 'Configuração de efeito inválida.');
       requireThat(Array.isArray(v.targetIds) && v.targetIds.length > 0 && v.targetIds.every(id => c.participants[id]?.participating), 'Selecione ao menos um alvo presente na iniciativa.');
       requireThat(v.trigger === 'none' || v.message.trim().length, 'Escreva a mensagem do aviso.');

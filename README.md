@@ -1,8 +1,12 @@
-# Iniciativa & Efeitos — versão 0.1.0
+# Iniciativa & Efeitos — versão 1.0.2
 
 Extensão independente para Owlbear Rodeo, inspirada na praticidade de uma lista de iniciativa. Todos os participantes da sala podem usar os controles. Os efeitos são inteiramente livres: não há modelos de habilidades, catálogo de magias ou efeitos pré-cadastrados.
 
 Esta é a primeira versão para validação na mesa. A interface, as regras e a comunicação em uma sala simulada foram verificadas. A instalação numa sala real e a compatibilidade visual completa com Smoke & Spectre ainda precisam ser verificadas.
+
+## Mudanças da versão 0.2.0
+
+Cabeçalho, rodada, botão de turno e linhas mais compactos; superfícies semitransparentes. O cartão completo e a quantidade de efeitos no marcador pertencem somente aos alvos. Quem apenas aplicou vê uma linha discreta de aplicação; quem apenas controla a duração vê uma linha de contagem com os alvos. Clique nessas linhas para editar. A transparência do fundo do próprio painel do Owlbear depende do aplicativo e não foi verificada numa sala real.
 
 ## Usar a iniciativa
 
@@ -20,10 +24,10 @@ Clique no nome para centralizar a câmera dos participantes que podem ver aquela
 
 ## Criar um efeito
 
-Use **Novo efeito** ou o marcador ao lado de um personagem. Preencha:
+Use o marcador ao lado de um personagem. Preencha:
 
 - **Nome e descrição:** texto livre, sem regras prontas.
-- **Quem aplicou:** origem do efeito.
+- **Quem aplicou:** origem do efeito, ou **Nenhum** para deixar sem aplicador. A referência da duração continua obrigatória e independente.
 - **Conta no final do turno de:** personagem cuja passagem de turno controla a duração. O padrão é o personagem do turno atual, inclusive em uma reação durante o turno de outra pessoa.
 - **Quem recebe:** um ou mais alvos. A duração é compartilhada por essa aplicação.
 - **Rodadas restantes:** de 1 a 999.

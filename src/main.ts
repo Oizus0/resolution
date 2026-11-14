@@ -1,4 +1,5 @@
 import './style.css';
+import './compact.css';
 import { createController } from './controller.ts';
 import type { Command, Effect, EffectInput, Tone, Trigger } from './engine.ts';
 import { displayName } from './engine.ts';
@@ -38,17 +39,24 @@ function effectCard(e:Effect,id:string){
   const receives=e.targetIds.includes(id);
   return `<article class="effect-card tone-${e.tone}">
     <div class="effect-top"><span class="effect-symbol">${icon(e.trigger==='none'?'shield':'spark')}</span><strong>${esc(e.name)}</strong><span class="duration">${e.remaining} ${e.remaining===1?'rodada':'rodadas'}</span></div>
-    <p class="effect-description">${esc(e.description || 'Sem descrição adicional.')}</p>
+    <p class="effect-description">${esc(e.description)}</p>
     <div class="effect-meta">${icon('clock')} <span>Conta no final do turno de <b>${esc(name(e.anchorId))}</b>.</span></div>
-    <div class="effect-meta">${icon(e.trigger==='none'?'shield':'spark')} <span>${e.trigger==='none'?'Sem aviso de ativação':`${e.trigger==='start'?'Início':'Final'} do turno ${receives?'deste personagem':'de cada alvo'}`}${e.trigger!=='none'?`: ${esc(e.message)}`:''}</span></div>
-    <div class="effect-bottom"><span>${receives?'Recebido de '+esc(name(e.sourceId)):'Afeta: '+esc(targets)}</span><div>${button('edit-effect','Editar '+e.name,'edit',e.id)}${button('remove-effect','Remover '+e.name,'trash',e.id)}</div></div>
+    ${e.trigger!=='none'?`<div class="effect-meta">${icon('spark')} <span>${e.trigger==='start'?'Início':'Final'} do turno: ${esc(e.message)}</span></div>`:''}
+    <div class="effect-bottom"><span>${e.sourceId?'Aplicado por '+esc(name(e.sourceId)):''}</span><div>${button('edit-effect','Editar '+e.name,'edit',e.id)}${button('remove-effect','Remover '+e.name,'trash',e.id)}</div></div>
   </article>`;
+}
+function referenceLine(e:Effect,id:string){
+  const targets=e.targetIds.filter(visible).map(name).join(', ');
+  const applied=e.sourceId===id;
+  const text=applied ? 'Aplicou '+e.name+' em '+targets : 'Conta '+e.name+' no fim do turno · afeta '+targets;
+  const detail=e.anchorId===id?'Conta no final deste turno': 'Conta no final do turno de '+name(e.anchorId);
+  return `<button class="effect-reference" data-action="edit-effect" data-id="${esc(e.id)}" title="${esc(detail+' · '+e.remaining+' rodadas')}" aria-label="${esc(text+'. '+detail)}">${icon(applied?'arrow':'clock')}<span>${esc(text)}</span>${e.anchorId===id && applied?icon('clock'):''}<small>${e.remaining}r</small></button>`;
 }
 function row(id:string,hidden=false){
   const c=controller.state.combat,p=c.participants[id],active=c.activeId===id;
-  const effects=related(id),received=effects.filter(e=>e.targetIds.includes(id));
+  const effects=related(id),received=effects.filter(e=>e.targetIds.includes(id)),references=effects.filter(e=>!e.targetIds.includes(id));
   const initials=name(id).split(/\s+/).slice(0,2).map(s=>s[0]).join('').toUpperCase();
-  const tooltip=effects.length?effects.map(e=>`${e.name} · ${e.remaining} rodadas\n${e.description}\nContagem: ${name(e.anchorId)}`).join('\n\n'):'Adicionar ou consultar efeitos';
+  const tooltip=received.length?received.map(e=>`${e.name} · ${e.remaining} rodadas\n${e.description}\nContagem: ${name(e.anchorId)}`).join('\n\n'):'Adicionar ou consultar efeitos';
   return `<li class="participant ${active?'is-active':''} ${hidden?'is-hidden':''}" data-row="${esc(id)}">
     <div class="participant-main">
       <button class="drag-handle" draggable="true" data-drag="${esc(id)}" data-action="reorder" data-id="${esc(id)}" title="Arrastar para reordenar" aria-label="Mover ${esc(name(id))}">${icon('grip')}</button>
@@ -56,11 +64,12 @@ function row(id:string,hidden=false){
       <span class="avatar ${id==='ana'?'gold':id==='bruno'?'blue':id==='pedro'?'violet':''}">${esc(initials)}</span>
       <div class="participant-label"><button class="name-button" data-action="focus" data-id="${esc(id)}" title="Focar ${esc(name(id))} no mapa de todos">${esc(name(id))}</button>
         <span class="row-status">${active?'Em seu turno':hidden?'Oculto para jogadores':c.started&&c.visited.includes(id)?'Já agiu nesta rodada':'Aguardando'}${received.length?` · ${received.length} ${received.length===1?'efeito':'efeitos'}`:''}</span></div>
-      <button class="effects-marker ${effects.length?'has-effects':''}" data-action="effects" data-id="${esc(id)}" title="${esc(tooltip)}" aria-label="Efeitos de ${esc(name(id))}" aria-expanded="${expanded.has(id)}">${icon('spark')}${effects.length?`<span>${effects.length}</span>`:''}</button>
+      <button class="effects-marker ${received.length?'has-effects':''}" data-action="effects" data-id="${esc(id)}" title="${esc(tooltip)}" aria-label="Efeitos de ${esc(name(id))}" aria-expanded="${expanded.has(id)}">${icon('spark')}${received.length?`<span>${received.length}</span>`:''}</button>
       ${button('rename','Editar nome de '+name(id),'edit',id)}
       <button class="initiative-number" data-action="initiative" data-id="${esc(id)}" aria-label="Editar iniciativa de ${esc(name(id))}: ${p.initiative}">${p.initiative}</button>
     </div>
-    ${expanded.has(id)?`<div class="effects-drawer">${effects.map(e=>effectCard(e,id)).join('') || '<p class="muted empty-effects">Nenhum efeito neste personagem.</p>'}<button class="add-effect-inline" data-action="add-effect" data-id="${esc(id)}">${icon('plus')} Adicionar efeito</button></div>`:''}
+    ${references.map(e=>referenceLine(e,id)).join('')}
+    ${expanded.has(id)?`<div class="effects-drawer">${received.map(e=>effectCard(e,id)).join('') || '<p class="muted empty-effects">Nenhum efeito recebido.</p>'}<button class="add-effect-inline" data-action="add-effect" data-id="${esc(id)}">${icon('plus')} Adicionar efeito</button></div>`:''}
   </li>`;
 }
 function render(){
@@ -76,7 +85,7 @@ function render(){
   document.body.classList.toggle('demo',controller.demo);
   app.innerHTML=`${controller.demo?`<div class="demo-label"><span class="status-dot"></span> PRÉVIA INTERATIVA <button data-action="role">${controller.gm?'Visão do mestre':'Visão de jogador'} ${icon('eye')}</button></div>`:''}
   <section class="tracker" aria-label="Iniciativa e efeitos">
-    <header class="app-header"><div class="brand-mark">${icon('spark')}</div><div class="brand"><h1>Iniciativa <span>& Efeitos</span></h1><p>${controller.demo?'Uma mesa de exemplo, pronta para explorar.':controller.ready?'Sincronizado com a mesa':'Conectando à cena…'}</p></div>${button('settings','Configurações','gear')}</header>
+    <header class="app-header"><div class="brand-mark" title="Iniciativa">${icon('spark')}</div>${button('settings','Configurações','gear')}</header>
     ${controller.error?`<div class="error-banner" role="alert">${esc(controller.error)}</div>`:''}
     <section class="turn-control" aria-label="Controle de rodadas">
       <div class="round-navigation">${button('previous-round','Voltar ao início da rodada anterior','back','',state.history.length<2||busy?'disabled':'')}
@@ -91,7 +100,7 @@ function render(){
       ${controller.gm&&hidden.length?`<div class="hidden-section"><button class="hidden-toggle" data-action="hidden">${icon('hidden')}<span>${hidden.length} ${hidden.length===1?'participante oculto':'participantes ocultos'}</span><span>${showHidden?'−':'+'}</span></button>${showHidden?`<ol class="participants">${hidden.map(id=>row(id,true)).join('')}</ol>`:''}<p>${state.settings.skipHidden?'Os turnos ocultos são processados automaticamente.':'Os ocultos continuam na sequência de turnos.'}</p></div>`:''}
       ${listed.length?'<div class="drop-end" data-drop-end>Arraste para definir a ordem</div>':''}
     </div>
-    <footer class="tracker-footer"><button class="secondary" data-action="add-effect" ${!listed.length?'disabled':''}>${icon('spark')} Novo efeito</button><button class="log-toggle ${showLog?'selected':''}" data-action="log">${icon('book')} Registro${log.length?`<span>${log.length}</span>`:''}</button></footer>
+    <footer class="tracker-footer"><button class="log-toggle ${showLog?'selected':''}" data-action="log">${icon('book')} Registro${log.length?`<span>${log.length}</span>`:''}</button></footer>
     ${showLog?`<section class="event-log" aria-label="Registro de efeitos"><div class="section-label">ÚLTIMOS AVISOS</div>${log.length?log.slice(0,30).map(({n,text})=>`<p><span class="log-round">R${n.round}</span><span>${esc(text)}</span></p>`).join(''):'<p class="muted">Os avisos dos efeitos aparecerão aqui.</p>'}</section>`:''}
     <div class="status-bar"><span><i class="status-dot"></i>${controller.demo?'Demonstração local':controller.ready?'Mesa conectada':'Aguardando cena'}</span><span>${visibleEffects.length} ${visibleEffects.length===1?'efeito ativo':'efeitos ativos'}</span></div>
   </section>${controller.demo?'<p class="demo-note">Use os personagens de exemplo para testar turnos e efeitos.<br>Esta prévia não altera seu tabuleiro do Owlbear.</p>':''}`;
@@ -146,12 +155,12 @@ function effectDialog(targetId='',existing?:Effect){
   const c=controller.state.combat;
   const first=c.order.find(id=>c.participants[id]?.participating && visible(id));
   if(!first){toast('Adicione um participante antes de criar efeitos.');return;}
-  const sourceId=existing?.sourceId || (c.activeId && visible(c.activeId)?c.activeId:targetId||first);
+  const sourceId=existing?.sourceId ?? (c.activeId && visible(c.activeId)?c.activeId:targetId||first);
   const anchorId=existing?.anchorId || c.activeId || sourceId;
-  const targets=existing?.targetIds || [targetId || sourceId];
+  const targets=existing?.targetIds || [targetId || sourceId || first];
   const body=`${field('Nome do efeito',`<input name="name" value="${esc(existing?.name||'')}" placeholder="Nome do efeito" maxlength="100" required autofocus>`)}
     ${field('Descrição',`<textarea name="description" rows="3" maxlength="5000" placeholder="O que este efeito faz?">${esc(existing?.description||'')}</textarea>`)}
-    <div class="form-grid">${field('Quem aplicou',`<select name="sourceId">${options(sourceId,true)}</select>`)}${field('Conta no final do turno de',`<select name="anchorId">${options(anchorId,true)}</select>`)}</div>
+    <div class="form-grid">${field('Quem aplicou',`<select name="sourceId"><option value="" ${sourceId===''?'selected':''}>Nenhum</option>${options(sourceId,true)}</select>`)}${field('Conta no final do turno de',`<select name="anchorId">${options(anchorId,true)}</select>`)}</div>
     <div class="form-grid">${field('Rodadas restantes',`<input name="remaining" type="number" min="1" max="999" step="1" value="${existing?.remaining||3}" required>`)}${field('Cor do marcador',`<select name="tone">${[['gold','Dourado'],['fire','Vermelho'],['blue','Azul'],['green','Verde'],['violet','Violeta']].map(([v,l])=>`<option value="${v}" ${existing?.tone===v?'selected':''}>${l}</option>`).join('')}</select>`)}</div>
     <fieldset class="target-list"><legend>Quem recebe o efeito</legend>${c.order.filter(id=>c.participants[id].participating && visible(id)).map(id=>`<label class="check-row"><input name="targets" type="checkbox" value="${esc(id)}" ${targets.includes(id)?'checked':''}><span>${esc(name(id))}</span></label>`).join('')}</fieldset>
     ${field('Aviso de ativação',`<select name="trigger">${[['none','Sem aviso — buff ou referência'],['start','No início do turno de cada alvo'],['end','No final do turno de cada alvo']].map(([v,l])=>`<option value="${v}" ${existing?.trigger===v?'selected':''}>${l}</option>`).join('')}</select>`)}
