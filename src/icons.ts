@@ -1,0 +1,20 @@
+const paths:Record<string,string>={
+  arrow:'<path d="m9 5 7 7-7 7"/>',back:'<path d="m15 5-7 7 7 7"/>',
+  play:'<path d="m8 5 11 7-11 7Z"/>',next:'<path d="m6 5 10 7-10 7Z"/><path d="M19 5v14"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',close:'<path d="m6 6 12 12M6 18 18 6"/>',
+  edit:'<path d="m16 3 5 5-12 12-6 1 1-6Z M14 5l5 5"/>',
+  trash:'<path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 11v6M14 11v6"/>',
+  spark:'<path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5ZM20 2v4M18 4h4"/>',
+  gear:'<path d="m9 3-.7 2.4-2.4 1-2.2-.6-2 3.4 1.6 1.8v2l-1.6 1.8 2 3.4 2.2-.6 2.4 1L9 21h4l.7-2.4 2.4-1 2.2.6 2-3.4-1.6-1.8v-2l1.6-1.8-2-3.4-2.2.6-2.4-1L13 3Z"/><circle cx="11" cy="12" r="3"/>',
+  eye:'<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
+  hidden:'<path d="m3 3 18 18M10 5h2c6 0 10 7 10 7a18 18 0 0 1-3 4M6 6c-3 2-4 6-4 6s4 7 10 7c2 0 3-1 4-1M9 9a4 4 0 0 0 6 6"/>',
+  grip:'<circle cx="9" cy="5" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="19" r="1"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/>',
+  reset:'<path d="M3 11a9 9 0 1 1 2 7M3 4v7h7"/>',
+  check:'<path d="m4 12 5 5L20 6"/>',
+  book:'<path d="M4 3h14a2 2 0 0 1 2 2v16H6a2 2 0 0 1-2-2Zm0 14h16M8 7h8M8 11h6"/>',
+  shield:'<path d="m12 3 8 4v6c0 5-8 8-8 8s-8-3-8-8V7Z"/>',
+  focus:'<path d="M3 8V3h5M16 3h5v5M21 16v5h-5M8 21H3v-5"/><circle cx="12" cy="12" r="3"/>',
+  info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7v1"/>',
+};
+export const icon=(name:string)=>`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name]??paths.spark}</svg>`;
