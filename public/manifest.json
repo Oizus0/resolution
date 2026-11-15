@@ -6,7 +6,7 @@
   "icon": "/icon.svg",
   "action": {
     "title": "Iniciativa & Efeitos",
-    "icon": "/icon.svg",
+    "icon": "/toolbar.svg",
     "popover": "/",
     "width": 480,
     "height": 660

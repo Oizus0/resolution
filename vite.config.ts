@@ -13,7 +13,7 @@ export default defineConfig({
     const path = resolve(import.meta.dirname, 'dist/manifest.json');
     const manifest = JSON.parse(readFileSync(path, 'utf8'));
     manifest.icon = `${base}icon.svg`;
-    manifest.action.icon = `${base}icon.svg`;
+    manifest.action.icon = `${base}toolbar.svg`;
     manifest.action.popover = `${base}index.html`;
     manifest.background_url = `${base}background.html`;
     writeFileSync(path, JSON.stringify(manifest, null, 2) + '\n');
