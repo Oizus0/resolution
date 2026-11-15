@@ -11,9 +11,10 @@ export interface MapItem {
   attenuationRadius?: number; sourceRadius?: number; innerAngle?: number; outerAngle?: number;
   doubleSided?: boolean; width?: number; height?: number; shapeType?: string;
   style?: { fillOpacity?: number }; commands?: number[][];
+  image?: { url: string; mime?: string };
 }
 export interface Viewer { id: string; role: 'GM' | 'PLAYER'; }
-export interface TokenView { id: string; name: string; position: Point; visible: boolean; hidden: boolean; }
+export interface TokenView { id: string; name: string; position: Point; visible: boolean; hidden: boolean; portraitUrl?: string; }
 const cross = (a: Point, b: Point, c: Point) => (b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x);
 const rotate = (p: Point, angle: number) => ({ x: p.x*Math.cos(angle)-p.y*Math.sin(angle), y: p.x*Math.sin(angle)+p.y*Math.cos(angle) });
 export function worldPoint(p: Point, item: MapItem): Point {
@@ -85,7 +86,9 @@ export function tokenViews(items: MapItem[], local: MapItem[], metadata: Record<
     const inVision=!disabled && lights.some(l=>lineVisible(item.position,l,walls));
     const inFog=(fogFilled && !inVision && !hasOwnVision) || covered;
     const visible=(item.visible || allowed) && !inFog;
-    return { id:item.id, name:item.name || 'Sem nome', position:item.position,
+    const url=item.image?.url;
+    const portraitUrl=(viewer.role==='GM' || visible) && typeof url==='string' && /^(https?:\/\/|blob:|data:image\/)/i.test(url) ? url : undefined;
+    return { id:item.id, name:item.name || 'Sem nome', position:item.position, portraitUrl,
       visible:viewer.role==='GM' || visible, hidden:!visible };
   });
 }

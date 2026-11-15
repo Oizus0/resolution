@@ -1,6 +1,6 @@
 {
   "name": "Iniciativa & Efeitos",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "manifest_version": 1,
   "description": "Turnos, rodadas e efeitos com duração vinculada a um personagem e avisos por alvo.",
   "icon": "/icon.svg",
@@ -8,7 +8,7 @@
     "title": "Iniciativa & Efeitos",
     "icon": "/icon.svg",
     "popover": "/",
-    "width": 440,
+    "width": 480,
     "height": 660
   },
   "background_url": "/background.html"

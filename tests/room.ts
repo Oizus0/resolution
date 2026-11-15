@@ -10,7 +10,8 @@ let frames:{element:HTMLIFrameElement;person:Person;channels:Set<string>}[]=[];
 let notifications:{person:string;message:string}[]=[], focuses:string[]=[], menus:unknown[]=[];
 const pending=new Map<string,(ack:WireMessage)=>void>();
 let unsupported=new Set<string>();
-const item=(id:string,name:string,layer='CHARACTER',visible=true)=>({id,name,type:'IMAGE',visible,layer,position:{x:100,y:100},rotation:0,scale:{x:1,y:1},metadata:{} as Record<string,unknown>,createdUserId:'gm'});
+const testPortrait=(id:string)=>'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><rect width="80" height="80" fill="'+(id==='ana'?'#624852':id==='bruno'?'#3a5369':'#526146')+'"/><path d="M8 80Q9 48 40 48Q71 48 72 80" fill="#253347"/><ellipse cx="40" cy="32" rx="19" ry="23" fill="#d7ad89"/><path d="M19 35Q10 1 40 3Q69 0 61 35L52 18L32 25L21 22Z" fill="#302b32"/><path d="M31 35h4m10 0h4" stroke="#332c30" stroke-width="3"/><path d="M34 46q6 4 12 0" fill="none" stroke="#8b5f53" stroke-width="2"/></svg>');
+const item=(id:string,name:string,layer='CHARACTER',visible=true)=>({id,name,image:{url:testPortrait(id),mime:'image/svg+xml',width:80,height:80},type:'IMAGE',visible,layer,position:{x:100,y:100},rotation:0,scale:{x:1,y:1},metadata:{} as Record<string,unknown>,createdUserId:'gm'});
 let items=[item('ana','Ana','PROP'),item('bruno','Bruno','MAP'),item('pedro','Pedro'),item('oculto','Segredo','ATTACHMENT',false)];
 function publish(id:string,data:unknown){for(const f of frames)f.element.contentWindow?.postMessage({id,data},location.origin);}
 function wire(message:WireMessage,person:Person){
@@ -55,9 +56,10 @@ window.addEventListener('message',event=>{
 const wait=async(check:()=>boolean,message='A operação não terminou.')=>{
   const start=Date.now();while(!check()){if(Date.now()-start>6000)throw new Error(message);await new Promise(r=>setTimeout(r,25));}
 };
-async function frame(person:Person){
+async function frame(person:Person,panel=false){
   const element=document.createElement('iframe');
-  element.src=`/background.html?obrref=${encodeURIComponent(btoa(`${location.origin} simulated-room`))}`;
+  if(panel){element.style.cssText='width:388px;height:592px;position:relative;display:block;border:1px solid #52616c;border-radius:8px;margin-top:12px;background:#111';if(new URLSearchParams(location.search).has('visual')){element.style.background='linear-gradient(135deg,#304037,#202e40 55%,#493b2a)';element.style.width='min(480px,100%)';element.style.height='592px';element.style.boxShadow='0 12px 45px #0007';}element.title='Painel de teste';}
+  element.src=`/${panel?'index':'background'}.html?obrref=${encodeURIComponent(btoa(`${location.origin} simulated-room`))}`;
   const f={element,person,channels:new Set<string>()};frames.push(f);
   const loaded=new Promise<void>(resolve=>element.addEventListener('load',()=>{
     element.contentWindow!.postMessage({id:'OBR_READY',data:{ref:person.connectionId,userId:person.id}},location.origin);resolve();},{once:true}));
@@ -135,6 +137,17 @@ runButton.addEventListener('click',async()=>{
     });
     await check('Nenhuma API usada pelo aplicativo ficou sem resposta no simulador',async()=>expect(!unsupported.size,[...unsupported].join(', ')));
     document.title='11 testes de integração passaram';
+    document.querySelector<HTMLButtonElement>('#panel')!.disabled=false;
   }catch{document.title='Falha nos testes de integração';}
   finally{runButton.disabled=false;}
+});
+
+document.querySelector('#panel')!.addEventListener('click',async()=>{
+  try {
+    await command({type:'add',participants:[{id:'ana',name:'Ana',initiative:22},{id:'pedro',name:'Pedro',initiative:10}]});
+    await command({type:'alias',id:'ana',value:'Lymna ATO II Token'});
+    await command({type:'alias',id:'bruno',value:'Maliah'});
+    await command({type:'next'});
+    await frame(player,true);
+  }catch(e){document.querySelector('#results')!.append(String(e));}
 });

@@ -16,7 +16,7 @@ export interface Combat {
   order: string[]; participants: Record<string, Participant>; effects: Effect[];
   visited: string[]; starts: Record<string, number>; log: Notice[];
 }
-export interface Settings { autoFocus: boolean; zoom: number; skipHidden: boolean; }
+export interface Settings { autoFocus: boolean; zoom: number; skipHidden: boolean; showPortraits: boolean; }
 export interface State {
   version: 1; revision: number; combat: Combat; aliases: Record<string, string>;
   settings: Settings; history: Combat[]; processed: string[];
@@ -36,7 +36,7 @@ export type Command =
 export interface Environment { hiddenIds?: string[]; }
 export interface Result { state: State; notices: Notice[]; focusId: string | null; }
 const clone = <T>(v: T): T => structuredClone(v);
-export const defaults = (): Settings => ({ autoFocus: false, zoom: 1.2, skipHidden: false });
+export const defaults = (): Settings => ({ autoFocus: false, zoom: 1.2, skipHidden: false, showPortraits: true });
 const emptyCombat = (): Combat => ({ started: false, round: 1, cycle: 0, activeId: null, order: [], participants: {}, effects: [], visited: [], starts: {}, log: [] });
 export const initialState = (): State => ({ version: 1, revision: 0, combat: emptyCombat(), aliases: {}, settings: defaults(), history: [], processed: [] });
 export function displayName(state: State, id: string): string { return state.aliases[id] || state.combat.participants[id]?.name || 'Personagem'; }
@@ -47,7 +47,9 @@ export const navigation = (c: Command) => ['next', 'nextRound', 'previousRound',
 
 export function reduce(previous: State, command: Command, env: Environment = {}, commandId = ''): Result {
   if (commandId && previous.processed.includes(commandId)) return { state: previous, notices: [], focusId: null };
-  const state = clone(previous);
+  // Recorded rounds are immutable; avoid cloning the whole history on every click.
+  const state: State = clone({ ...previous, history: [] });
+  state.history = [...previous.history];
   state.revision++;
   let c = state.combat;
   const notices: Notice[] = [];
@@ -203,6 +205,7 @@ export function reduce(previous: State, command: Command, env: Environment = {},
     case 'removeEffect': c.effects = c.effects.filter(e => e.id !== command.id); cleanGhosts(); break;
     case 'settings': {
       const v = command.value;
+      if (v.showPortraits !== undefined) { requireThat(typeof v.showPortraits === 'boolean', 'Configuração inválida.'); state.settings.showPortraits = v.showPortraits; }
       if (v.autoFocus !== undefined) { requireThat(typeof v.autoFocus === 'boolean', 'Configuração inválida.'); state.settings.autoFocus = v.autoFocus; }
       if (v.skipHidden !== undefined) { requireThat(typeof v.skipHidden === 'boolean', 'Configuração inválida.'); state.settings.skipHidden = v.skipHidden; }
       if (v.zoom !== undefined) { requireThat(Number.isFinite(v.zoom) && v.zoom >= .25 && v.zoom <= 3, 'Zoom inválido.'); state.settings.zoom = v.zoom; }
@@ -225,5 +228,7 @@ export function readState(value: unknown): State {
   if (v.version !== 1 || !Number.isSafeInteger(v.revision) || !v.combat || !Array.isArray(v.combat.order) || !Array.isArray(v.combat.effects) || !Array.isArray(v.history) || !Array.isArray(v.processed) || !v.aliases || !v.settings) {
     throw new Error('Os dados desta cena não são compatíveis com esta versão. Eles foram preservados.');
   }
-  return clone(v);
+  const state = clone(v);
+  state.settings = { ...defaults(), ...state.settings };
+  return state;
 }

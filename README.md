@@ -1,4 +1,4 @@
-# Iniciativa & Efeitos — versão 1.0.2
+# Iniciativa & Efeitos — versão 1.0.3
 
 Extensão independente para Owlbear Rodeo, inspirada na praticidade de uma lista de iniciativa. Todos os participantes da sala podem usar os controles. Os efeitos são inteiramente livres: não há modelos de habilidades, catálogo de magias ou efeitos pré-cadastrados.
 
@@ -8,11 +8,21 @@ Esta é a primeira versão para validação na mesa. A interface, as regras e a 
 
 Cabeçalho, rodada, botão de turno e linhas mais compactos; superfícies semitransparentes. O cartão completo e a quantidade de efeitos no marcador pertencem somente aos alvos. Quem apenas aplicou vê uma linha discreta de aplicação; quem apenas controla a duração vê uma linha de contagem com os alvos. Clique nessas linhas para editar. A transparência do fundo do próprio painel do Owlbear depende do aplicativo e não foi verificada numa sala real.
 
+## Versão 1.0.3
+
+Inclui as correções da revisão: reinício com confirmação funcional, cabeçalho em uma linha, nomes maiores, aproveitamento de toda a altura da lista e menos trabalho repetido com visibilidade e histórico. O fundo geral da extensão é transparente; o acabamento por trás dele depende do painel do Owlbear.
+
+A imagem original de cada token aparece numa bolha circular de 32 pixels, à esquerda do nome. **Configurações → Mostrar imagens dos personagens** ativa ou desativa a exibição para toda a mesa. Começa ativada, inclusive ao abrir cenas salvas por versões anteriores. Se a imagem estiver ausente ou falhar, aparece um símbolo neutro no lugar; não são inventadas imagens para os personagens.
+
+Todos os participantes podem adicionar e remover entradas, editar nomes e iniciativas, reordenar, criar e remover efeitos, avançar e retornar rodadas, mudar configurações e reiniciar o combate. A iniciativa pertence à cena e as mudanças são compartilhadas. Não há aprovação do mestre nem restrição por dono do token dentro desta extensão. A interface dos jogadores filtra os personagens que não devem ver; o mestre pode consultar os ocultos. Essa filtragem não constitui controle de acesso criptográfico aos metadados da cena. O uso de névoa avançada do Smoke & Spectre continua sujeito às limitações descritas abaixo.
+
+Alterar o nome na iniciativa não altera o nome original da imagem. Remover uma entrada ou reiniciar não apaga tokens do mapa. Cliques simultâneos de avanço usam a revisão da lista: quando uma pessoa já avançou, a outra recebe um aviso para conferir o estado atualizado.
+
 ## Usar a iniciativa
 
 1. Selecione uma ou várias imagens de qualquer camada no mapa e use **Iniciativa** no menu da seleção. Informe o valor. Também é possível adicionar pelo painel.
 2. Organize a lista. Arraste pela alça à esquerda; clique na alça para escolher a posição sem arrastar. Clique no número para mudar a iniciativa ou no lápis para editar o nome exibido.
-3. Clique em **Iniciar primeiro turno**. Só nesse momento começa o combate.
+3. Clique em **Iniciar**. Só nesse momento começa o combate.
 4. **Próximo turno** avança pela ordem atual. Depois do último personagem, começa uma nova rodada. O atalho é `Alt + seta para a direita`, com o painel em foco.
 5. A seta direita junto à rodada percorre os turnos restantes, processa os efeitos e para no primeiro personagem da rodada seguinte. Os avisos atravessados aparecem juntos numa notificação.
 6. A seta esquerda recupera o estado registrado no início da rodada anterior. Isso inclui participantes, ordem e efeitos: efeitos criados depois daquele momento desaparecem e os que existiam voltam. Avisos antigos não são reenviados.

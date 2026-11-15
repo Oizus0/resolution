@@ -6,6 +6,16 @@ import { initialState, reduce } from '../src/engine.ts';
 import { leader } from '../src/protocol.ts';
 const base=(id:string,type='IMAGE',x=0,y=0):MapItem=>({id,type,name:id,visible:true,position:{x,y},rotation:0,scale:{x:1,y:1},metadata:{},createdUserId:'gm'});
 const viewer={id:'player1',role:'PLAYER' as const};
+
+test('portraits use the token image and are omitted from hidden player views',()=>{
+  const token={...base('portrait'),image:{url:'https://example.test/token.webp'}};
+  assert.equal(tokenViews([token],[],{},false,viewer)[0].portraitUrl, token.image.url);
+  token.visible=false;
+  assert.equal(tokenViews([token],[],{},false,viewer)[0].portraitUrl, undefined);
+  assert.equal(tokenViews([token],[],{},false,{id:'gm',role:'GM'})[0].portraitUrl,token.image.url);
+  token.visible=true;token.image.url='javascript:alert(1)';
+  assert.equal(tokenViews([token],[],{},false,viewer)[0].portraitUrl,undefined);
+});
 test('hidden images stay private and GM sees them',()=>{
   const i={...base('secret'),visible:false};
   assert.equal(tokenViews([i],[],{},false,viewer)[0].visible,false);

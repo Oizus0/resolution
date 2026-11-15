@@ -12,7 +12,9 @@ const modalRoot=document.querySelector<HTMLDivElement>('#modal-root')!;
 const expanded=new Set<string>();
 let showHidden=false,showLog=false,busy=false,dragged:string|null=null;
 const esc=(v:unknown)=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
-const safeIds=()=>new Set(controller.views.filter(v=>v.visible).map(v=>v.id));
+let visibleIds=new Set<string>();
+let portraitUrls=new Map<string,string>();
+const safeIds=()=>visibleIds;
 const visible=(id:string)=>controller.gm || safeIds().has(id);
 const name=(id:string)=>visible(id)?displayName(controller.state,id):'Personagem oculto';
 const related=(id:string)=>controller.state.combat.effects.filter(e=>(e.targetIds.includes(id)||e.sourceId===id||e.anchorId===id) && (controller.gm || e.targetIds.some(visible)));
@@ -34,9 +36,7 @@ async function perform(command:Command){
   try{await controller.send(command);}catch(e){toast(e instanceof Error?e.message:String(e));}
   finally{busy=false;render();}
 }
-function effectCard(e:Effect,id:string){
-  const targets=e.targetIds.filter(visible).map(name).join(', ');
-  const receives=e.targetIds.includes(id);
+function effectCard(e:Effect){
   return `<article class="effect-card tone-${e.tone}">
     <div class="effect-top"><span class="effect-symbol">${icon(e.trigger==='none'?'shield':'spark')}</span><strong>${esc(e.name)}</strong><span class="duration">${e.remaining} ${e.remaining===1?'rodada':'rodadas'}</span></div>
     <p class="effect-description">${esc(e.description)}</p>
@@ -55,13 +55,14 @@ function referenceLine(e:Effect,id:string){
 function row(id:string,hidden=false){
   const c=controller.state.combat,p=c.participants[id],active=c.activeId===id;
   const effects=related(id),received=effects.filter(e=>e.targetIds.includes(id)),references=effects.filter(e=>!e.targetIds.includes(id));
-  const initials=name(id).split(/\s+/).slice(0,2).map(s=>s[0]).join('').toUpperCase();
+  const portrait=portraitUrls.get(id);
+  const portraitName='Imagem de '+name(id);
   const tooltip=received.length?received.map(e=>`${e.name} · ${e.remaining} rodadas\n${e.description}\nContagem: ${name(e.anchorId)}`).join('\n\n'):'Adicionar ou consultar efeitos';
   return `<li class="participant ${active?'is-active':''} ${hidden?'is-hidden':''}" data-row="${esc(id)}">
     <div class="participant-main">
       <button class="drag-handle" draggable="true" data-drag="${esc(id)}" data-action="reorder" data-id="${esc(id)}" title="Arrastar para reordenar" aria-label="Mover ${esc(name(id))}">${icon('grip')}</button>
       ${button('remove','Remover '+name(id)+' da iniciativa','close',id)}
-      <span class="avatar ${id==='ana'?'gold':id==='bruno'?'blue':id==='pedro'?'violet':''}">${esc(initials)}</span>
+      ${controller.state.settings.showPortraits!==false?`<span class="token-portrait" role="img" aria-label="${esc(portraitName)}" title="${esc(portraitName)}">${icon('shield')}${portrait?`<img src="${esc(portrait)}" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">`:''}</span>`:''}
       <div class="participant-label"><button class="name-button" data-action="focus" data-id="${esc(id)}" title="Focar ${esc(name(id))} no mapa de todos">${esc(name(id))}</button>
         <span class="row-status">${active?'Em seu turno':hidden?'Oculto para jogadores':c.started&&c.visited.includes(id)?'Já agiu nesta rodada':'Aguardando'}${received.length?` · ${received.length} ${received.length===1?'efeito':'efeitos'}`:''}</span></div>
       <button class="effects-marker ${received.length?'has-effects':''}" data-action="effects" data-id="${esc(id)}" title="${esc(tooltip)}" aria-label="Efeitos de ${esc(name(id))}" aria-expanded="${expanded.has(id)}">${icon('spark')}${received.length?`<span>${received.length}</span>`:''}</button>
@@ -69,31 +70,33 @@ function row(id:string,hidden=false){
       <button class="initiative-number" data-action="initiative" data-id="${esc(id)}" aria-label="Editar iniciativa de ${esc(name(id))}: ${p.initiative}">${p.initiative}</button>
     </div>
     ${references.map(e=>referenceLine(e,id)).join('')}
-    ${expanded.has(id)?`<div class="effects-drawer">${received.map(e=>effectCard(e,id)).join('') || '<p class="muted empty-effects">Nenhum efeito recebido.</p>'}<button class="add-effect-inline" data-action="add-effect" data-id="${esc(id)}">${icon('plus')} Adicionar efeito</button></div>`:''}
+    ${expanded.has(id)?`<div class="effects-drawer">${received.map(e=>effectCard(e)).join('') || '<p class="muted empty-effects">Nenhum efeito recebido.</p>'}<button class="add-effect-inline" data-action="add-effect" data-id="${esc(id)}">${icon('plus')} Adicionar efeito</button></div>`:''}
   </li>`;
 }
 function render(){
   const oldScroll=app.querySelector('.list-area')?.scrollTop??0;
   const state=controller.state,c=state.combat;
-  const views=new Map(controller.views.map(v=>[v.id,v]));
+  const sceneViews=controller.views;
+  visibleIds=new Set(sceneViews.filter(v=>v.visible).map(v=>v.id));
+  portraitUrls=new Map(sceneViews.filter(v=>v.visible && v.portraitUrl).map(v=>[v.id,v.portraitUrl!]));
+  const views=new Map(sceneViews.map(v=>[v.id,v]));
   const listed=c.order.filter(id=>c.participants[id]?.participating && visible(id));
   const hidden=listed.filter(id=>views.get(id)?.hidden);
   const shown=listed.filter(id=>!controller.gm || !views.get(id)?.hidden);
-  const active=c.activeId && visible(c.activeId)?name(c.activeId):c.activeId?'Turno reservado':'';
   const visibleEffects=c.effects.filter(e=>e.targetIds.some(visible));
   const log=c.log.map(n=>({n,text:visibleNotice(n,state,safeIds(),controller.gm)})).filter(x=>x.text).reverse();
   document.body.classList.toggle('demo',controller.demo);
   app.innerHTML=`${controller.demo?`<div class="demo-label"><span class="status-dot"></span> PRÉVIA INTERATIVA <button data-action="role">${controller.gm?'Visão do mestre':'Visão de jogador'} ${icon('eye')}</button></div>`:''}
   <section class="tracker" aria-label="Iniciativa e efeitos">
-    <header class="app-header"><div class="brand-mark" title="Iniciativa">${icon('spark')}</div>${button('settings','Configurações','gear')}</header>
-    ${controller.error?`<div class="error-banner" role="alert">${esc(controller.error)}</div>`:''}
+    <header class="app-header"><div class="brand-mark" title="Iniciativa">${icon('spark')}</div>
     <section class="turn-control" aria-label="Controle de rodadas">
       <div class="round-navigation">${button('previous-round','Voltar ao início da rodada anterior','back','',state.history.length<2||busy?'disabled':'')}
-      <button class="round-label" data-action="round" title="Editar apenas o número da rodada"><span>${c.started?'RODADA ATUAL':'PREPARAÇÃO'}</span><strong>${c.round}<sup>ª</sup> Rodada<span class="period">.</span></strong></button>
+      <button class="round-label" data-action="round" title="Editar apenas o número da rodada"><strong>${c.round}<sup>ª</sup> Rodada<span class="period">.</span></strong></button>
       ${button('next-round','Avançar até o início da próxima rodada','arrow','',!c.order.length||busy?'disabled':'')}</div>
-      <button class="primary next-turn" data-action="next" ${busy||!c.order.some(id=>c.participants[id]?.participating)||!controller.ready||controller.error?'disabled':''}>${icon(c.started?'next':'play')}<span>${busy?'Salvando…':c.started?'Próximo turno':'Iniciar primeiro turno'}</span>${c.started?'<kbd title="Alt + seta para a direita">Alt →</kbd>':''}</button>
-      <p class="turn-caption">${c.started?`Agora: <strong>${esc(active || 'aguardando participante')}</strong>`:'Adicione os personagens. O primeiro clique inicia o combate.'}</p>
+      <button class="primary next-turn" data-action="next" aria-label="${c.started?'Próximo turno':'Iniciar primeiro turno'}" title="${c.started?'Próximo turno · Alt + →':'Iniciar combate'}" ${busy||!c.order.some(id=>c.participants[id]?.participating)||!controller.ready||controller.error?'disabled':''}>${icon(c.started?'next':'play')}<span>${busy?'Salvando…':c.started?'Próximo':'Iniciar'}</span>${c.started?'<kbd title="Alt + seta para a direita">Alt →</kbd>':''}</button>
     </section>
+    ${button('settings','Configurações','gear')}</header>
+    ${controller.error?`<div class="error-banner" role="alert">${esc(controller.error)}</div>`:''}
     <div class="list-heading"><span>ORDEM DE COMBATE <b>${shown.length}</b></span><button class="text-button" data-action="add">${icon('plus')} Adicionar</button></div>
     <div class="list-area"><ol class="participants" aria-label="Ordem de iniciativa">${shown.map(id=>row(id)).join('')}</ol>
       ${!listed.length?`<div class="empty-state"><div class="empty-symbol">${icon('shield')}</div><h2>${controller.ready?'A mesa está pronta.':'Abra uma cena no Owlbear.'}</h2><p>${controller.ready?'Selecione uma imagem no mapa e escolha “Iniciativa”, ou adicione por aqui.':'Os participantes e seus efeitos aparecerão aqui.'}</p>${controller.ready?'<button class="secondary" data-action="add">Adicionar participantes</button>':''}</div>`:''}
@@ -112,11 +115,16 @@ function formDialog(title:string,body:string,label:string,submit:FormHandler){
   modalRoot.innerHTML=`<dialog aria-labelledby="dialog-title"><form><div class="dialog-heading"><h2 id="dialog-title">${esc(title)}</h2><button type="button" class="icon-button" data-close aria-label="Fechar">${icon('close')}</button></div><div class="dialog-body">${body}</div><p class="form-error" role="alert"></p><div class="dialog-footer"><button type="button" class="secondary" data-close>Cancelar</button><button type="submit" class="primary">${esc(label)}</button></div></form></dialog>`;
   const dialog=modalRoot.querySelector('dialog')!,form=dialog.querySelector('form')!;
   dialog.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>dialog.close()));
-  dialog.addEventListener('close',()=>{modalRoot.innerHTML='';previousFocus?.focus();});
+  dialog.addEventListener('close',()=>{
+    // close is queued: an old dialog must never erase its replacement.
+    if(dialog.parentElement!==modalRoot)return;
+    dialog.remove();
+    if(previousFocus?.isConnected)previousFocus.focus();
+  });
   form.addEventListener('submit',async event=>{
     event.preventDefault();const button=form.querySelector<HTMLButtonElement>('[type=submit]')!;
     button.disabled=true;
-    try{await submit(new FormData(form),form);dialog.close();}
+    try{await submit(new FormData(form),form);if(dialog.isConnected)dialog.close();}
     catch(e){form.querySelector('.form-error')!.textContent=e instanceof Error?e.message:String(e);}
     finally{button.disabled=false;render();}
   });
@@ -183,12 +191,12 @@ function effectDialog(targetId='',existing?:Effect){
 }
 function settingsDialog(){
   const s=controller.state.settings;
-  const form=formDialog('Configurações',`<label class="setting-option"><span><strong>Focar no personagem do turno</strong><small>Centraliza a câmera com uma aproximação moderada.</small></span><input type="checkbox" name="autoFocus" ${s.autoFocus?'checked':''}></label>
+  const form=formDialog('Configurações',`<label class="setting-option"><span><strong>Mostrar imagens dos personagens</strong><small>Exibe a imagem do token em uma bolha circular. Esta preferência vale para toda a mesa.</small></span><input type="checkbox" name="showPortraits" ${s.showPortraits!==false?'checked':''}></label><label class="setting-option"><span><strong>Focar no personagem do turno</strong><small>Centraliza a câmera com uma aproximação moderada.</small></span><input type="checkbox" name="autoFocus" ${s.autoFocus?'checked':''}></label>
     ${field('Aproximação da câmera',`<div class="range-wrap"><input name="zoom" type="range" min="0.5" max="2" step="0.1" value="${s.zoom}"><output>${s.zoom.toFixed(1)}×</output></div>`)}
     <label class="setting-option"><span><strong>Passar automaticamente pelos ocultos</strong><small>Recolhe os nomes e processa seus turnos e efeitos sem cliques individuais.</small></span><input type="checkbox" name="skipHidden" ${s.skipHidden?'checked':''}></label>
     <p class="form-note">${icon('hidden')} A lista, os avisos e a câmera respeitam os personagens visíveis para cada jogador.</p>
     <div class="danger-zone"><div><strong>Reiniciar combate</strong><p>Limpa participantes, efeitos, rodadas, histórico e configurações. Preserva nomes personalizados.</p></div><button type="button" class="danger-outline" data-reset>${icon('reset')} Reiniciar tudo</button></div>`,'Salvar configurações',async data=>{
-    await controller.send({type:'settings',value:{autoFocus:data.has('autoFocus'),skipHidden:data.has('skipHidden'),zoom:Number(value(data,'zoom'))}});
+    await controller.send({type:'settings',value:{showPortraits:data.has('showPortraits'),autoFocus:data.has('autoFocus'),skipHidden:data.has('skipHidden'),zoom:Number(value(data,'zoom'))}});
   });
   form.querySelector('[name=zoom]')!.addEventListener('input',e=>{form.querySelector('output')!.textContent=Number((e.target as HTMLInputElement).value).toFixed(1)+'×';});
   form.querySelector('[data-reset]')!.addEventListener('click',()=>{
@@ -199,6 +207,10 @@ function settingsDialog(){
 function reorder(id:string){
   formDialog('Mover '+name(id),field('Posicionar antes de',`<select name="before"><option value="">Final da lista</option>${controller.state.combat.order.filter(x=>x!==id&&visible(x)).map(x=>`<option value="${esc(x)}">${esc(name(x))}</option>`).join('')}</select>`),'Mover',async data=>{await controller.send({type:'move',id,beforeId:value(data,'before')||null});});
 }
+app.addEventListener('error',event=>{
+  const image=event.target;
+  if(image instanceof HTMLImageElement && image.closest('.token-portrait')){image.parentElement!.title='Imagem indisponível';image.remove();}
+},true);
 app.addEventListener('click',async event=>{
   const b=(event.target as HTMLElement).closest<HTMLElement>('[data-action]');if(!b || (b as HTMLButtonElement).disabled)return;
   const id=b.dataset.id||'';
@@ -241,6 +253,8 @@ app.addEventListener('dragend',()=>{dragged=null;render();});
 document.addEventListener('keydown',event=>{
   if(event.key==='ArrowRight' && event.altKey && !modalRoot.querySelector('dialog') && !busy){event.preventDefault();void perform({type:'next'});}
 });
-controller.subscribe(render);controller.context(ids=>{void addParticipants(ids);});
+let renderFrame=0;
+controller.subscribe(()=>{if(renderFrame)return;renderFrame=requestAnimationFrame(()=>{renderFrame=0;if(!dragged)render();});});
+controller.context(ids=>{void addParticipants(ids).catch(e=>toast(String(e)));});
 render();
 controller.start().then(render).catch(e=>{toast(String(e));render();});

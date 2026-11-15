@@ -1,56 +1,60 @@
-/* Compact panel; transparency applies to the extension's own surfaces. */
-:root { background: transparent; --bg: #13171dc7; }
-body:not(.demo) { background: transparent; }
-.tracker { background: var(--bg); }
-.app-header { padding: 9px 12px; gap: 8px; }
-.brand-mark { width: 24px; height: 24px; border-radius: 7px; }
-.brand-mark svg { width: 17px; height: 17px; }
-.brand h1 { font-size: 13px; }
-.brand p { display: none; }
-.app-header>.icon-button { width: 28px; height: 28px; }
-.turn-control { padding: 4px 12px 9px; display: grid; grid-template-columns: 1fr 135px; gap: 5px 10px; align-items: center; }
-.round-navigation { margin: 0; gap: 3px; }
+/* Review in progress: the list owns all remaining height. */
+:root { background: transparent; --bg: transparent; color-scheme: normal; }
+input, select, textarea, dialog { color-scheme: dark; }
+body:not(.demo) { height: 100dvh; overflow: hidden; background: transparent; }
+body:not(.demo) #app { height: 100%; }
+.tracker { background: var(--bg); display: flex; flex-direction: column; width: 100%; height: 100%; min-height: 0; }
+.app-header { display: flex; align-items: center; padding: 5px 6px; gap: 4px; flex-shrink: 0; }
+.brand-mark { width: 20px; height: 20px; border-radius: 5px; flex-shrink: 0; }
+.brand-mark svg { width: 14px; height: 14px; }
+.app-header>.icon-button { width: 27px; height: 27px; min-width: 27px; min-height: 27px; padding: 4px; border: none; }
+.turn-control { flex: 1; min-width: 0; padding: 0; border: none; display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+.round-navigation { margin: 0; gap: 0; flex: 1; max-width: 185px; justify-content: center; }
 .round-navigation>.icon-button { width: 25px; height: 28px; min-width: 25px; padding: 4px; border: none; }
 .round-label { padding: 0 3px; }
-.round-label>span { font-size: 7px; letter-spacing: 1px; margin-bottom: 1px; }
-.round-label strong { font-size: 18px; letter-spacing: -.4px; white-space: nowrap; }
-.round-label sup { font-size: 11px; margin-right: 2px; }
-.next-turn { min-height: 32px; font-size: 11px; padding: 5px 8px; gap: 4px; border-radius: 6px; }
+.round-label strong { font-size: 14px; letter-spacing: 0; white-space: nowrap; }
+.round-label sup { font-size: 10px; margin-right: 2px; }
+.next-turn { width: auto; min-height: 28px; font-size: 12px; padding: 4px 8px; gap: 4px; border-radius: 5px; flex-shrink: 0; }
+.next-turn>svg { width: 14px; height: 14px; }
 .next-turn kbd { display: none; }
-.turn-caption { grid-column: 1/-1; margin: 2px 0 0; font-size: 10px; }
-.list-heading { padding: 10px 12px 7px; }
-.list-area { padding: 0 8px; max-height: calc(100dvh - 210px); }
-.participant { background: #222a3466; }
+.list-heading { padding: 8px 7px; border-top: 1px solid var(--line); flex-shrink: 0; }
+.list-heading>span { font-size: 10px; letter-spacing: 1px; }
+.text-button { font-size: 12px; }
+.list-area { padding: 0 3px; flex: 1 1 0; min-height: 0; max-height: none; overflow-y: auto; overflow-x: hidden; }
+.participant { background: #222a3466; border-radius: 6px; }
 .participant.is-active { background: linear-gradient(100deg,#284c3b99,#283b4266); }
-.participant-main { min-height: 46px; padding-top: 5px; padding-bottom: 5px; }
-.avatar { width: 26px; height: 26px; font-size: 10px; }
-.initiative-number { font-size: 18px; }
-.effects-drawer { padding: 2px 9px 8px 12px; }
+.participant-main { min-height: 55px; padding: 5px 5px 5px 2px; gap: 3px; }
+.avatar { display: none; }
+.name-button { font-size: 16px; font-weight: 600; white-space: normal; overflow-wrap: anywhere; line-height: 1.25; }
+.row-status { font-size: 11px; margin-top: 3px; }
+.initiative-number { font-size: 22px; min-width: 34px; }
+.participant-main>.icon-button { min-width: 24px; min-height: 28px; }
+.participant-main>.icon-button svg { width: 14px; height: 14px; }
+.effects-marker { padding: 5px 3px; }
+.effects-marker svg { width: 16px; height: 16px; }
+.effects-marker span { font-size: 11px; }
+.effects-drawer { padding: 2px 8px 8px; }
 .effect-card { padding: 8px; margin-bottom: 5px; background: #11182044; }
-.effect-description { margin: 5px 0; font-size: 11px; }
+.effect-top strong { font-size: 13px; }
+.effect-description { margin: 5px 0; font-size: 12px; }
 .effect-description:empty { display: none; }
-.effect-meta { font-size: 10px; margin: 4px 0; }
-.effect-reference { display: flex; align-items: center; gap: 6px; width: calc(100% - 18px); margin: 0 9px 6px; padding: 4px 6px; text-align: left; background: #9abdd909; border-radius: 4px; color: #afc3d2; font-size: 11px; line-height: 1.45; }
+.effect-meta { font-size: 11px; margin: 4px 0; }
+.effect-reference { display: flex; align-items: center; gap: 6px; width: calc(100% - 12px); margin: 0 6px 6px; padding: 4px 5px; text-align: left; background: #9abdd909; border-radius: 4px; color: #afc3d2; font-size: 12px; line-height: 1.4; }
 .effect-reference>svg { width: 12px; height: 12px; color: #91b3cf; }
 .effect-reference>span { flex: 1; overflow-wrap: anywhere; }
-.effect-reference>small { color: #a2b5c2; white-space: nowrap; font-size: 10px; }
-.tracker-footer { padding: 8px 12px; }
-.tracker-footer .secondary { min-height: 29px; padding: 5px 10px; }
-.status-bar { padding: 7px 12px; }
-.drop-end { padding: 7px; min-height: 23px; }
-.hidden-section { margin-top: 7px; padding-top: 4px; }
+.effect-reference>small { color: #a2b5c2; white-space: nowrap; font-size: 11px; }
+.tracker-footer { padding: 1px 8px; justify-content: flex-end; flex-shrink: 0; }
+.log-toggle { padding: 5px 0; font-size: 11px; }
+.status-bar { padding: 6px 8px; flex-shrink: 0; }
+.event-log { flex-shrink: 0; max-height: 150px; }
+.drop-end { padding: 6px; min-height: 22px; }
+.hidden-section { margin-top: 5px; padding-top: 3px; }
 .hidden-section>p { display: none; }
-.demo .list-area { max-height: 470px; }
-@media(max-width:360px) { .turn-control { grid-template-columns: 1fr 110px; gap: 5px; padding: 4px 8px 8px; } .next-turn { font-size: 10px; } .app-header { padding: 8px 10px; } }
+.demo #app { max-width: 480px; }
+.demo .tracker { height: 660px; }
+.demo .list-area { max-height: none; }
+@media(max-width:360px) { .app-header { padding: 4px; gap: 2px; } .round-navigation>.icon-button { min-width: 22px; width: 22px; } .round-label strong { font-size: 13px; } .next-turn { padding: 4px 6px; font-size: 11px; } .list-area { padding: 0 3px; } }
 
-/* 1.0.2: leave more room for the initiative list. */
-:root { --bg: #13171da3; }
-.app-header { padding: 3px 10px; min-height: 26px; justify-content: space-between; }
-.brand-mark { width: 20px; height: 20px; border-radius: 5px; }
-.brand-mark svg { width: 14px; height: 14px; }
-.app-header>.icon-button { width: 24px; height: 24px; min-width: 24px; min-height: 24px; padding: 3px; border: none; }
-.tracker-footer { padding: 1px 12px; justify-content: flex-end; }
-.log-toggle { padding: 5px 0; }
-.list-area { max-height: calc(100dvh - 170px); }
-.demo .list-area { max-height: 510px; }
-@media(max-width:360px) { .app-header { padding: 3px 8px; } }
+.token-portrait { position:relative; display:grid; place-items:center; width:32px; height:32px; flex:0 0 32px; border-radius:50%; overflow:hidden; border:1px solid #9ab5a855; background:#25302c55; margin:0 4px 0 1px; color:#9aafa5; }
+.token-portrait>svg { width:17px; height:17px; }
+.token-portrait>img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:50%; }

@@ -127,6 +127,29 @@ test('empty combat and invalid durations fail without modifying the state', () =
   assert.throws(() => reduce(setup(), cast({ remaining: 0 }))); assert.equal(s.revision, 0);
 });
 
+test('portrait preference defaults on for old scenes and keeps explicit off across reload', () => {
+  const old = setup();
+  delete (old.settings as Partial<typeof old.settings>).showPortraits;
+  const migrated = readState(old);
+  assert.equal(migrated.settings.showPortraits, true);
+  const off = reduce(migrated, { type: 'settings', value: { showPortraits: false } }).state;
+  assert.equal(readState(off).settings.showPortraits, false);
+  assert.deepEqual(off.combat, migrated.combat);
+});
+
+test('commands never mutate archived rounds or previous state when sharing immutable history', () => {
+  const s = next(setup());
+  const before = structuredClone(s);
+  const freeze = (v: any) => { if(v && typeof v === 'object') { Object.freeze(v); Object.values(v).forEach(freeze); } };
+  freeze(s);
+  let current = reduce(s, cast()).state;
+  current = reduce(current, { type: 'nextRound' }).state;
+  current = reduce(current, { type: 'previousRound' }).state;
+  current = reduce(current, { type: 'alias', id: 'ana', value: 'Outro nome' }).state;
+  assert.deepEqual(s, before);
+  assert.deepEqual(current.history[0], before.history[0]);
+});
+
 test('an effect without a caster keeps its duration reference on edit and expires normally', () => {
   let s = reduce(next(setup()), cast({ sourceId: '', remaining: 1, targetIds: ['pedro'] })).state;
   s = reduce(s, { type: 'effect', value: { ...s.combat.effects[0], description: 'Editado' } }).state;

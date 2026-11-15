@@ -22,3 +22,9 @@ Não foram incluídos modelos prontos de efeitos ou habilidades. Os textos usado
 
 ## Atualização 1.0.2
 Compilação e tipos validados. Conferidos no navegador: cabeçalho sem título, ausência do botão geral Novo efeito, acesso a Adicionar efeito pelo personagem e fundo com opacidade reduzida de 78% para 64%. Regras de combate não alteradas nesta versão.
+
+## Entrega 1.0.3
+
+31 testes automáticos passaram, incluindo migração da preferência de retratos, preservação da opção desativada e exclusão dos endereços de imagens ocultas da apresentação do jogador. Compilação e tipos passaram. Os 11 testes de comunicação com SDK real e sala simulada passaram novamente. Conferidas no navegador três imagens carregadas e a remoção/restauração das bolhas ao salvar a configuração como jogador.
+
+O pacote incorpora as correções documentadas na revisão intermediária. Não foi publicado nesta entrega. As imagens de demonstração e o fundo da captura são ilustrativos. A validação com imagens hospedadas numa sala real e com a névoa avançada do Smoke & Spectre permanece pendente.

@@ -15,9 +15,10 @@ export class SceneClient {
   private listeners = new Set<() => void>();
   private stops: (() => void)[] = [];
   sceneId(): string { return typeof this.metadata[SCENE_KEY]==='string' ? this.metadata[SCENE_KEY] as string : ''; }
-  views(): TokenView[] { return tokenViews(this.items as MapItem[], this.local as MapItem[], this.metadata, this.fogFilled, this.viewer); }
+  private cachedViews: TokenView[] | null = null;
+  views(): TokenView[] { return this.cachedViews ??= tokenViews(this.items as MapItem[], this.local as MapItem[], this.metadata, this.fogFilled, this.viewer); }
   onChange(fn: () => void) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
-  emit() { this.listeners.forEach(fn=>fn()); }
+  emit() { this.cachedViews=null; this.listeners.forEach(fn=>fn()); }
   private metadataChanged(metadata: Record<string,unknown>) {
     this.metadata=metadata;
     try { this.state=readState(metadata[STATE_KEY]); this.error=''; }
