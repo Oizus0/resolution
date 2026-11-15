@@ -16,7 +16,7 @@ export class SceneClient {
   private stops: (() => void)[] = [];
   sceneId(): string { return typeof this.metadata[SCENE_KEY]==='string' ? this.metadata[SCENE_KEY] as string : ''; }
   private cachedViews: TokenView[] | null = null;
-  views(): TokenView[] { return this.cachedViews ??= tokenViews(this.items as MapItem[], this.local as MapItem[], this.metadata, this.fogFilled, this.viewer); }
+  views(): TokenView[] { return this.cachedViews ??= tokenViews(this.items as MapItem[], this.state.combat.participants, this.viewer); }
   onChange(fn: () => void) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
   emit() { this.cachedViews=null; this.listeners.forEach(fn=>fn()); }
   private metadataChanged(metadata: Record<string,unknown>) {
@@ -40,12 +40,10 @@ export class SceneClient {
     if(!ready) return;
     this.stops.push(
       OBR.scene.items.onChange(items=>{if(generation===this.generation){this.items=items;this.emit();}}),
-      OBR.scene.local.onChange(items=>{if(generation===this.generation){this.local=items;this.emit();}}),
-      OBR.scene.fog.onChange(fog=>{if(generation===this.generation){this.fogFilled=fog.filled;this.emit();}}),
       OBR.scene.onMetadataChange(meta=>{if(generation===this.generation)this.metadataChanged(meta);})
     );
-    const [items,local,filled,metadata]=await Promise.all([OBR.scene.items.getItems(),OBR.scene.local.getItems(),OBR.scene.fog.getFilled(),OBR.scene.getMetadata()]);
+    const [items,metadata]=await Promise.all([OBR.scene.items.getItems(),OBR.scene.getMetadata()]);
     if(generation!==this.generation) return;
-    this.items=items;this.local=local;this.fogFilled=filled;this.ready=true;this.metadataChanged(metadata);
+    this.items=items;this.ready=true;this.metadataChanged(metadata);
   }
 }

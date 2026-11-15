@@ -67,18 +67,18 @@ const DEMO_KEY='initiative-effects-demo-v1'+(new URLSearchParams(location.search
 export class DemoController implements Controller {
   demo=true;ready=true;gm=true;error='';state=initialState();notify=(_text:string)=>{};
   private callbacks=new Set<()=>void>();
-  private hidden=new Set(['oculto']);
-  get views():TokenView[]{return this.state.combat.order.map((id,i)=>({id,name:this.state.combat.participants[id].name,position:{x:i*100,y:0},visible:this.gm || !this.hidden.has(id),hidden:this.hidden.has(id)}));}
+  
+  get views():TokenView[]{return this.state.combat.order.map((id,i)=>({id,name:this.state.combat.participants[id].name,position:{x:i*100,y:0},visible:this.gm || this.state.combat.participants[id].hidden!==true,hidden:this.state.combat.participants[id].hidden===true}));}
   subscribe(callback:()=>void){this.callbacks.add(callback);}context(_callback:(ids:string[])=>void){}
   async start(){
     try{const saved=localStorage.getItem(DEMO_KEY);if(saved){this.state=readState(JSON.parse(saved));return;}}catch{this.notify('A prévia anterior não pôde ser aberta.');}
     this.state=reduce(initialState(),{type:'add',participants:[
       {id:'ana',name:'Ana',initiative:22},{id:'bruno',name:'Bruno',initiative:16},
-      {id:'pedro',name:'Pedro',initiative:10},{id:'oculto',name:'Sentinela oculta',initiative:7}
+      {id:'pedro',name:'Pedro',initiative:10},{id:'oculto',name:'Sentinela oculta',initiative:7,hidden:true}
     ]}).state;
   }
   async send(command:Command){
-    const result=reduce(this.state,command,{hiddenIds:[...this.hidden]},crypto.randomUUID());
+    const result=reduce(this.state,command,{},crypto.randomUUID());
     this.state=result.state;localStorage.setItem(DEMO_KEY,JSON.stringify(this.state));
     this.callbacks.forEach(fn=>fn());
     const visible=new Set(this.views.filter(v=>v.visible).map(v=>v.id));

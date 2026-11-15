@@ -132,18 +132,19 @@ function formDialog(title:string,body:string,label:string,submit:FormHandler){
 }
 const field=(label:string,input:string,hint='')=>`<label class="field"><span>${label}</span>${input}${hint?`<small>${hint}</small>`:''}</label>`;
 const value=(data:FormData,key:string)=>String(data.get(key)??'');
+const hiddenCheckbox=(checked=false)=>controller.gm?`<label class="check-row setting-check"><input type="checkbox" name="hidden" ${checked?'checked':''}><span>Oculto para jogadores</span></label>`:'';
 function editSimple(kind:'alias'|'initiative'|'round',id=''){
   const current=kind==='alias'?name(id):kind==='initiative'?controller.state.combat.participants[id].initiative:controller.state.combat.round;
   const title=kind==='alias'?'Nome na iniciativa':kind==='initiative'?'Valor de iniciativa':'Número da rodada';
   const hint=kind==='alias'?'Este nome permanece depois de reiniciar o combate.':kind==='round'?'Altera somente o número exibido. Para restaurar turnos e efeitos, use a seta de voltar.':'A posição será atualizada pelo valor. Você pode ajustar a ordem arrastando.';
-  formDialog(title,field(title,`<input autofocus name="value" type="${kind==='alias'?'text':'number'}" value="${esc(current)}" ${kind==='alias'?'maxlength="100"':kind==='round'?'min="1" max="99999" step="1"':'min="-99999" max="99999" step="any"'} required>`,hint),'Salvar',async data=>{
-    const v=value(data,'value');await controller.send(kind==='alias'?{type:'alias',id,value:v}:kind==='initiative'?{type:'initiative',id,value:Number(v)}:{type:'round',value:Number(v)});
+  formDialog(title,field(title,`<input autofocus name="value" type="${kind==='alias'?'text':'number'}" value="${esc(current)}" ${kind==='alias'?'maxlength="100"':kind==='round'?'min="1" max="99999" step="1"':'min="-99999" max="99999" step="any"'} required>`,hint)+(kind==='initiative'?hiddenCheckbox(controller.state.combat.participants[id].hidden):''),'Salvar',async data=>{
+    const v=value(data,'value');await controller.send(kind==='alias'?{type:'alias',id,value:v}:kind==='initiative'?{type:'initiative',id,value:Number(v),...(controller.gm?{hidden:data.has('hidden')}:{})}:{type:'round',value:Number(v)});
   });
 }
 async function addParticipants(selected:string[]=[]){
   if(controller.demo){
-    formDialog('Adicionar personagem',field('Nome','<input name="name" placeholder="Nome do personagem" maxlength="100" required autofocus>')+field('Iniciativa','<input type="number" name="initiative" value="10" step="any" min="-99999" max="99999" required>'),'Adicionar',async data=>{
-      await controller.send({type:'add',participants:[{id:crypto.randomUUID(),name:value(data,'name'),initiative:Number(value(data,'initiative'))}]});
+    formDialog('Adicionar personagem',field('Nome','<input name="name" placeholder="Nome do personagem" maxlength="100" required autofocus>')+field('Iniciativa','<input type="number" name="initiative" value="10" step="any" min="-99999" max="99999" required>')+hiddenCheckbox(),'Adicionar',async data=>{
+      await controller.send({type:'add',participants:[{id:crypto.randomUUID(),name:value(data,'name'),initiative:Number(value(data,'initiative')),...(controller.gm?{hidden:data.has('hidden')}:{})}]});
     });return;
   }
   const available=controller.views.filter(v=>v.visible);
@@ -153,10 +154,10 @@ async function addParticipants(selected:string[]=[]){
   const targets=chosen.length?chosen:available;
   const checkbox=targets.map(v=>`<label class="check-row"><input type="checkbox" name="targets" value="${esc(v.id)}" ${chosen.length?'checked':''}><span>${esc(controller.state.aliases[v.id]||v.name)}</span></label>`).join('');
   const initial=chosen.length===1?controller.state.combat.participants[chosen[0].id]?.initiative??10:10;
-  formDialog('Iniciativa',field('Valor',`<input name="initiative" type="number" step="any" min="-99999" max="99999" value="${initial}" required autofocus>`)+`<fieldset class="target-list"><legend>Imagens ${chosen.length?'selecionadas':'da cena'}</legend>${checkbox}</fieldset>`,'Adicionar à iniciativa',async data=>{
+  formDialog('Iniciativa',field('Valor',`<input name="initiative" type="number" step="any" min="-99999" max="99999" value="${initial}" required autofocus>`)+`<fieldset class="target-list"><legend>Imagens ${chosen.length?'selecionadas':'da cena'}</legend>${checkbox}</fieldset>`+hiddenCheckbox(chosen.length===1&&controller.state.combat.participants[chosen[0].id]?.hidden),'Adicionar à iniciativa',async data=>{
     const ids=data.getAll('targets').map(String);
     if(!ids.length)throw new Error('Selecione pelo menos uma imagem.');
-    await controller.send({type:'add',participants:ids.map(id=>({id,name:available.find(v=>v.id===id)!.name,initiative:Number(value(data,'initiative'))}))});
+    await controller.send({type:'add',participants:ids.map(id=>({id,name:available.find(v=>v.id===id)!.name,initiative:Number(value(data,'initiative')),...(controller.gm?{hidden:data.has('hidden')}:{})}))});
   });
 }
 function effectDialog(targetId='',existing?:Effect){

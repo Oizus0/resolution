@@ -1,16 +1,13 @@
 import OBR from '@owlbear-rodeo/sdk';
 import { SceneClient } from './scene-client.ts';
 import { reduce, readState, navigation } from './engine.ts';
-import { visibleNotice, SPECTRE } from './visibility.ts';
+import { visibleNotice } from './visibility.ts';
 import { NS, CHANNEL, STATE_KEY, ALIAS_KEY, CONTEXT_KEY, SCENE_KEY, leader, validEnvelope } from './protocol.ts';
 import type { CommandRequest, WireMessage } from './protocol.ts';
 
 const client=new SceneClient();
-const reports=new Map<string,{ids:Set<string>;sceneId:string;time:number}>();
 const seen=new Set<string>();
 let seenGeneration=-1, lastRevision=-1, initializing=false, queue=Promise.resolve();
-let updateTimer: ReturnType<typeof setTimeout>|undefined;
-let lastVision='';
 const allPeers=()=>[...client.peers.filter(p=>p.connectionId!==client.connectionId),{connectionId:client.connectionId,role:client.viewer.role}];
 const isLeader=()=>leader(allPeers())===client.connectionId;
 const send=(data:WireMessage,destination:'ALL'|'LOCAL'='ALL')=>OBR.broadcast.sendMessage(CHANNEL,data,{destination});
@@ -25,17 +22,6 @@ async function ensureScene() {
     if(generation!==client.generation || !isLeader()) return;
     if(!meta[SCENE_KEY]) await OBR.scene.setMetadata({[SCENE_KEY]:crypto.randomUUID()});
   } finally { initializing=false; }
-}
-function hiddenIds():string[] {
-  const views=client.views();
-  const activePlayers=client.peers.filter(p=>p.role==='PLAYER');
-  const validReports=activePlayers.map(p=>reports.get(p.connectionId)).filter(r=>r && r.sceneId===client.sceneId() && Date.now()-r.time<15000);
-  return views.filter(v=>{
-    const item=client.items.find(i=>i.id===v.id)!;
-    if(!item.visible && item.metadata[`${SPECTRE}/isSpectre`]!==true) return true;
-    if(activePlayers.length && validReports.length===activePlayers.length) return !validReports.some(r=>r!.ids.has(v.id));
-    return v.hidden;
-  }).map(v=>v.id);
 }
 async function focus(id:string) {
   if(!client.ready) return;
@@ -59,7 +45,12 @@ async function process(request:CommandRequest, sender:string, generation:number)
     const before=readState(meta[STATE_KEY]);
     if(before.processed.includes(request.requestId)) {await ack();return;}
     if(navigation(request.command) && before.revision!==request.baseRevision) throw new Error('A lista foi atualizada por outra pessoa. Confira o turno e clique novamente.');
-    // Context-menu payloads are resolved against current scene images, including Spectre originals.
+    const gm=allPeers().find(p=>p.connectionId===sender)?.role==='GM';
+    if(!gm){
+      if(request.command.type==='initiative')delete request.command.hidden;
+      if(request.command.type==='add')for(const p of request.command.participants){delete p.hidden;if(before.combat.participants[p.id]?.hidden)throw new Error('Personagem oculto pelo mestre.');}
+    }
+    // Context-menu payloads are resolved against current scene images, using original image IDs.
     if(request.command.type==='add') {
       const images=await OBR.scene.items.getItems(i=>i.type==='IMAGE');
       request.command.participants=request.command.participants.map(p=>{
@@ -72,7 +63,7 @@ async function process(request:CommandRequest, sender:string, generation:number)
         if(typeof alias==='string' && !before.aliases[p.id]) before.aliases[p.id]=alias;
       }
     }
-    const result=reduce(before,request.command,{hiddenIds:hiddenIds()},request.requestId);
+    const result=reduce(before,request.command,{},request.requestId);
     if(generation!==client.generation || !isLeader()) return;
     await OBR.scene.setMetadata({[STATE_KEY]:result.state});
     await ack();
@@ -84,16 +75,8 @@ async function process(request:CommandRequest, sender:string, generation:number)
     if(result.focusId) await send({kind:'focus',id:result.focusId,sceneId:request.sceneId,requestId:request.requestId});
   } catch(e) { await ack(e instanceof Error?e.message:'Não foi possível salvar a alteração.'); }
 }
-async function broadcastVision() {
-  if(!client.ready || !client.sceneId()) return;
-  const ids=client.views().filter(v=>v.visible && !v.hidden).map(v=>v.id).sort();
-  const key=client.sceneId()+':'+ids.join(',');
-  if(key===lastVision) return;
-  lastVision=key;
-  await send({kind:'vision',ids,sceneId:client.sceneId(),playerId:client.viewer.id});
-}
 function changed() {
-  if(client.generation!==seenGeneration) {seenGeneration=client.generation;lastRevision=-1;seen.clear();lastVision='';reports.clear();}
+  if(client.generation!==seenGeneration) {seenGeneration=client.generation;lastRevision=-1;seen.clear();}
   if(!client.ready) return;
   void ensureScene().catch(reportError);
   if(lastRevision<0) lastRevision=client.state.revision;
@@ -104,12 +87,11 @@ function changed() {
     // One notification per transition, preserving every effect line when skipping a round.
     if(messages.length) void OBR.notification.show(messages.join('\n'),'INFO').catch(reportError);
   }
-  clearTimeout(updateTimer);updateTimer=setTimeout(()=>void broadcastVision().catch(reportError),150);
 }
 async function context() {
   await OBR.contextMenu.create({id:`${NS}/initiative`,icons:[{icon:new URL(`${import.meta.env.BASE_URL}icon.svg`,location.href).href,label:'Iniciativa',filter:{every:[{key:'type',value:'IMAGE'}]}}],
     async onClick(ctx) {
-      const ids=ctx.items.map(i=>typeof i.metadata[`${SPECTRE}/isLocalSpectre`]==='string' ? i.metadata[`${SPECTRE}/isLocalSpectre`] as string : i.id);
+      const ids=ctx.items.map(i=>i.id);
       sessionStorage.setItem(CONTEXT_KEY,JSON.stringify({ids,sceneId:client.sceneId(),nonce:crypto.randomUUID()}));
       await OBR.action.open();
       await send({kind:'context'},'LOCAL');
@@ -125,8 +107,7 @@ if(OBR.isAvailable) OBR.onReady(async()=>{
         if(!message.command || typeof message.requestId!=='string' || typeof message.clientId!=='string') return;
         const generation=client.generation;
         queue=queue.then(()=>process(message,event.connectionId,generation)).catch(reportError);
-      } else if(message.kind==='vision' && Array.isArray(message.ids)) {
-        reports.set(event.connectionId,{ids:new Set(message.ids),sceneId:message.sceneId,time:Date.now()});
+
       } else if(message.kind==='focus' && message.sceneId===client.sceneId() && !seen.has(message.requestId)) {
         seen.add(message.requestId); if(seen.size>500)seen.delete(seen.values().next().value!);
         void focus(message.id).catch(reportError);
@@ -135,7 +116,7 @@ if(OBR.isAvailable) OBR.onReady(async()=>{
     client.onChange(changed);
     await client.init(); await context(); changed();
     // Refresh reports without writing heartbeat data to the scene.
-    setInterval(()=>{lastVision='';void broadcastVision().catch(reportError);void ensureScene().catch(reportError);},5000);
+    setInterval(()=>{void ensureScene().catch(reportError);},5000);
     // A removed map item becomes an inactive reference; history can still restore its combat data.
     let removing=false;
     setInterval(async()=>{

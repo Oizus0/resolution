@@ -1,7 +1,7 @@
 /** Pure combat rules. No Owlbear, browser, clock or network dependencies. */
 export type Trigger = 'none' | 'start' | 'end';
 export type Tone = 'gold' | 'fire' | 'blue' | 'green' | 'violet';
-export interface Participant { id: string; name: string; initiative: number; participating: boolean; }
+export interface Participant { id: string; name: string; initiative: number; hidden?: boolean; participating: boolean; }
 export interface Effect {
   id: string; name: string; description: string; sourceId: string; anchorId: string;
   targetIds: string[]; remaining: number; trigger: Trigger; message: string;
@@ -23,9 +23,9 @@ export interface State {
 }
 export type EffectInput = Omit<Effect, 'firstCountAt'>;
 export type Command =
-  | { type: 'add'; participants: { id: string; name: string; initiative: number }[] }
+  | { type: 'add'; participants: { id: string; name: string; initiative: number; hidden?: boolean }[] }
   | { type: 'remove'; id: string }
-  | { type: 'initiative'; id: string; value: number }
+  | { type: 'initiative'; id: string; value: number; hidden?: boolean }
   | { type: 'alias'; id: string; value: string }
   | { type: 'move'; id: string; beforeId: string | null }
   | { type: 'next' | 'nextRound' | 'previousRound' | 'reset' }
@@ -53,7 +53,7 @@ export function reduce(previous: State, command: Command, env: Environment = {},
   state.revision++;
   let c = state.combat;
   const notices: Notice[] = [];
-  const hidden = new Set(env.hiddenIds ?? []);
+  const hidden = new Set([...env.hiddenIds ?? [], ...Object.values(c.participants).filter(p=>p.hidden).map(p=>p.id)]);
   let focusId: string | null = null;
   const isSelectable = (id: string) => c.participants[id]?.participating && !(state.settings.skipHidden && hidden.has(id));
   const canAdvance = () => c.order.some(isSelectable);
@@ -127,6 +127,7 @@ export function reduce(previous: State, command: Command, env: Environment = {},
         requireThat(string(p.id, 150) && p.id.length && string(p.name, 200) && Number.isFinite(p.initiative) && Math.abs(p.initiative) <= 99999, 'Nome ou iniciativa inválidos.');
         if (c.participants[p.id]?.participating) {
           c.participants[p.id].initiative = p.initiative;
+          if(p.hidden!==undefined)c.participants[p.id].hidden=p.hidden;
           placeByInitiative(p.id);
         } else {
           c.participants[p.id] = { ...p, participating: true };
@@ -151,6 +152,7 @@ export function reduce(previous: State, command: Command, env: Environment = {},
       requireThat(c.participants[command.id], 'Participante não encontrado.');
       requireThat(Number.isFinite(command.value) && Math.abs(command.value) <= 99999, 'Digite uma iniciativa válida.');
       c.participants[command.id].initiative = command.value;
+      if(command.hidden!==undefined)c.participants[command.id].hidden=command.hidden;
       placeByInitiative(command.id);
       break;
     }
